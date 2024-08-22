@@ -60,6 +60,8 @@ public class BffHotelController {
     private final GetCommentsOperationProcessor getCommentsOperationProcessor;
 
     @PostMapping(RestApiRoutes.BOOK_ROOM)
+   // @PreAuthorize("hasAnyAuthority('ADMIN', 'USER')")
+    //@SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<BookRoomResponse> bookRoom ( @PathVariable String roomId, @RequestBody BookRoomRequest request ) {
         log.info("Booking room with request: {}", request);
         request.setRoomId(roomId);
@@ -98,6 +100,7 @@ public class BffHotelController {
     }
 
     @DeleteMapping(RestApiRoutes.DELETE_ROOM)
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> deleteRoom ( @PathVariable String id ) {
         DeleteRoomRequest request = DeleteRoomRequest
                 .builder()
@@ -114,7 +117,6 @@ public class BffHotelController {
 
     @DeleteMapping(RestApiRoutes.REMOVE_BOOKING)
     @SecurityRequirement(name = "bearerAuth")
-    @PreAuthorize("hasAuthority('ADMIN')")
     @Operation(summary = "Remove booking")
     public ResponseEntity<?> removeBooking ( @PathVariable String bookId ) {
         log.info("Removing booking with ID: {}", bookId);

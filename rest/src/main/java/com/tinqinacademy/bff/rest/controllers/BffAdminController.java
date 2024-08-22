@@ -1,5 +1,6 @@
 package com.tinqinacademy.bff.rest.controllers;
 
+import com.tinqinacademy.authentication.restexport.RestExportValidateToken;
 import com.tinqinacademy.bff.api.errors.Errors;
 import com.tinqinacademy.bff.api.operations.admindelete.AdminDeleteOperation;
 import com.tinqinacademy.bff.api.operations.admindelete.AdminDeleteRequest;
@@ -14,16 +15,17 @@ import com.tinqinacademy.bff.core.operations.*;
 import com.tinqinacademy.comments.api.contracts.RestApiRoutesComments;
 import com.tinqinacademy.hotel.api.contracts.RestApiRoutes;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.vavr.control.Either;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-//@SecurityRequirement(name = "bearerAuth")
 public class BffAdminController {
 
     private final PartUpdateOperationProcessor partUpdateOperationProcessor;
@@ -31,18 +33,20 @@ public class BffAdminController {
     private final EditCommentOperationProcessor editCommentOperationProcessor;
     private final AdminEditOperationProcessor adminEditOperationProcessor;
     private final AdminDeleteOperationProcessor adminDeleteOperationProcessor;
+    private final RestExportValidateToken restExportValidateToken;
 
 
-    public BffAdminController ( PartUpdateOperationProcessor partUpdateOperationProcessor, VisitorRegistrationOperationProcessor visitorRegistrationOperationProcessor, AdminDeleteOperationProcessor adminDeleteOperationProcessor, EditCommentOperationProcessor editCommentOperationProcessor, AdminEditOperationProcessor adminEditOperationProcessor, AdminDeleteOperation adminDeleteOperation, AdminDeleteOperationProcessor adminDeleteOperationProcessor1 ) {
+    public BffAdminController ( PartUpdateOperationProcessor partUpdateOperationProcessor, VisitorRegistrationOperationProcessor visitorRegistrationOperationProcessor, AdminDeleteOperationProcessor adminDeleteOperationProcessor, EditCommentOperationProcessor editCommentOperationProcessor, AdminEditOperationProcessor adminEditOperationProcessor, AdminDeleteOperation adminDeleteOperation, AdminDeleteOperationProcessor adminDeleteOperationProcessor1, RestExportValidateToken restExportValidateToken ) {
         this.partUpdateOperationProcessor = partUpdateOperationProcessor;
         this.visitorRegistrationOperationProcessor = visitorRegistrationOperationProcessor;
         this.editCommentOperationProcessor = editCommentOperationProcessor;
         this.adminEditOperationProcessor = adminEditOperationProcessor;
         this.adminDeleteOperationProcessor = adminDeleteOperationProcessor1;
+        this.restExportValidateToken = restExportValidateToken;
     }
 
     @PatchMapping(RestApiRoutes.PARTIAL_UPDATE_ROOM)
-    //@SecurityRequirement(name = "bearerAuth")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> partialUpdateRoom ( @PathVariable String roomId, @RequestBody @Validated PartUpdateRequest request ) {
         request.setRoomId(roomId);
         log.info("Partial update room with request: {}", request);
@@ -60,10 +64,10 @@ public class BffAdminController {
         );
     }
 
-
     @DeleteMapping(RestApiRoutesComments.ADMIN_DELETE)
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(summary = "Admin can delete any comment.")
-    public ResponseEntity<AdminDeleteResponse> deleteComment(@PathVariable String commentId) {
+    public ResponseEntity<AdminDeleteResponse> deleteComment ( @PathVariable String commentId ) {
         log.info("Received request to delete comment with ID: {}", commentId);
 
         AdminDeleteRequest request = AdminDeleteRequest.builder()
@@ -85,10 +89,11 @@ public class BffAdminController {
                 }
         );
     }
+
     @PatchMapping("/api/v1/hotel/comment/{commentId}")
-    public ResponseEntity<?> editComment(
+    public ResponseEntity<?> editComment (
             @PathVariable String commentId,
-            @RequestBody @Validated EditCommentRequest editCommentRequest) {
+            @RequestBody @Validated EditCommentRequest editCommentRequest ) {
 
         log.info("Received request to edit comment with ID: {}", commentId);
 
@@ -109,7 +114,8 @@ public class BffAdminController {
     }
 
     @PatchMapping("/api/v1/system/comment/{commentId}")
-    public ResponseEntity<?> editComment(@PathVariable("commentId") String commentId, @RequestBody AdminEditRequest request) {
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<?> editComment ( @PathVariable("commentId") String commentId, @RequestBody AdminEditRequest request ) {
         request.setCommentId(commentId);
 
         Either<Errors, AdminEditResponse> result = adminEditOperationProcessor.process(request);
@@ -125,6 +131,6 @@ public class BffAdminController {
                 }
         );
     }
-
 }
+
 
