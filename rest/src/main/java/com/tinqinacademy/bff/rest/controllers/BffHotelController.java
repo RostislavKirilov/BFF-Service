@@ -10,6 +10,10 @@ import com.tinqinacademy.bff.api.operations.deleteroom.DeleteRoomRequest;
 import com.tinqinacademy.bff.api.operations.deleteroom.DeleteRoomResponse;
 import com.tinqinacademy.bff.api.operations.findroom.FindRoomRequest;
 import com.tinqinacademy.bff.api.operations.findroom.FindRoomResponse;
+import com.tinqinacademy.bff.api.operations.getallcomments.GetCommentsRequest;
+import com.tinqinacademy.bff.api.operations.getallcomments.GetCommentsResponse;
+import com.tinqinacademy.bff.api.operations.leavecomment.LeaveCommentRequest;
+import com.tinqinacademy.bff.api.operations.leavecomment.LeaveCommentResponse;
 import com.tinqinacademy.bff.api.operations.registervisitor.RegisterVisitorRequest;
 import com.tinqinacademy.bff.api.operations.registervisitor.RegisterVisitorResponse;
 import com.tinqinacademy.bff.api.operations.removebooking.RemoveBookingRequest;
@@ -17,16 +21,20 @@ import com.tinqinacademy.bff.api.operations.removebooking.RemoveBookingResponse;
 import com.tinqinacademy.bff.api.operations.updateroom.UpdateRoomRequest;
 import com.tinqinacademy.bff.api.operations.updateroom.UpdateRoomResponse;
 import com.tinqinacademy.bff.core.operations.*;
+import com.tinqinacademy.comments.api.contracts.RestApiRoutesComments;
+import com.tinqinacademy.comments.api.contracts.operations.getallcomments.GetCommentsInput;
+import com.tinqinacademy.comments.api.contracts.operations.getallcomments.GetCommentsOutput;
 import com.tinqinacademy.hotel.api.contracts.RestApiRoutes;
 import com.tinqinacademy.hotel.restexport.RestExportInterface;
+import io.swagger.annotations.ApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.vavr.control.Either;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.annotation.Secured;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -48,6 +56,8 @@ public class BffHotelController {
     private final UpdateRoomOperationProcessor updateRoomOperationProcessor;
     private final RestExportValidateToken restExportValidateToken;
     private final VisitorRegistrationOperationProcessor visitorRegistrationOperationProcessor;
+    private final LeaveCommentOperationProcessor leaveCommentOperationProcessor;
+    private final GetCommentsOperationProcessor getCommentsOperationProcessor;
 
     @PostMapping(RestApiRoutes.BOOK_ROOM)
     public ResponseEntity<BookRoomResponse> bookRoom ( @PathVariable String roomId, @RequestBody BookRoomRequest request ) {
@@ -179,6 +189,56 @@ public class BffHotelController {
                     return ResponseEntity.status(HttpStatus.CREATED).body(response);
                 }
         );
+    }
+
+
+    @PostMapping(RestApiRoutesComments.LEAVE_COMMENT)
+    @Operation(summary = "Leave a comment for a certain room.")
+    public ResponseEntity<?> leaveComment ( @RequestBody LeaveCommentRequest request ) {
+        log.info("Leaving comment with request: {}", request);
+
+        Either<Errors, LeaveCommentResponse> result = leaveCommentOperationProcessor.process(request);
+
+        return result.fold(
+                error -> {
+                    log.warn("Failed to leave comment: {}", error.getMessage());
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error.getMessage());
+                },
+                response -> {
+                    log.info("Comment left successfully");
+                    return ResponseEntity.status(HttpStatus.CREATED).body(response);
+                }
+        );
+    }
+
+    @GetMapping(RestApiRoutesComments.GET_COMMENTS)
+    public ResponseEntity<?> getComments(@PathVariable String roomId) {
+        GetCommentsRequest request = GetCommentsRequest.builder()
+                .roomId(roomId)
+                .build();
+
+        log.info("Received request to get comments for room ID: {}", roomId);
+
+        Either<Errors, GetCommentsResponse> result = getCommentsOperationProcessor.process(request);
+
+        return result.fold(
+                error -> {
+                    log.warn("Failed to get comments: {}", error.getMessage());
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                },
+                response -> {
+                    log.info("Successfully retrieved comments for room ID: {}", roomId);
+                    return ResponseEntity.ok(response);
+                }
+        );
+    }
+
+
+    private HttpStatus determineHttpStatus(Errors errors) {
+        if (errors.getMessage().contains("No comments found")) {
+            return HttpStatus.NOT_FOUND;
+        }
+        return HttpStatus.BAD_REQUEST;
     }
 }
 
