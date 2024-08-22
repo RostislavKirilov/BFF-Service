@@ -2,6 +2,7 @@ package com.tinqinacademy.bff.domain;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tinqinacademy.authentication.restexport.RestExportValidateToken;
+import com.tinqinacademy.comments.restexport.CommentsClient;
 import com.tinqinacademy.hotel.restexport.RestExportInterface;
 import feign.Feign;
 import feign.jackson.JacksonDecoder;
@@ -27,6 +28,10 @@ public class FeignConfig {
 
     @Value("${hotel.service.url}")
     private String HOTEL_URL;
+    @Value("${comments.service.url}")
+    private String COMMENTS_URL;
+    @Value("${auth.service.url}")
+    private String AUTH_URL;
 
 
     @Bean
@@ -40,7 +45,7 @@ public class FeignConfig {
                 .encoder(new JacksonEncoder(objectMapper))
                 .decoder(new JacksonDecoder(objectMapper))
                 .logger(new Slf4jLogger(RestExportInterface.class))
-                .target(RestExportInterface.class, "http://localhost:8082");
+                .target(RestExportInterface.class, HOTEL_URL);
     }
 
     @Bean
@@ -54,6 +59,20 @@ public class FeignConfig {
                 .encoder(new JacksonEncoder(objectMapper))
                 .decoder(new JacksonDecoder(objectMapper))
                 .logger(new Slf4jLogger(RestExportValidateToken.class))
-                .target(RestExportValidateToken.class, "http://localhost:8086");
+                .target(RestExportValidateToken.class, AUTH_URL);
+    }
+
+    @Bean
+    public CommentsClient commentsClient() {
+
+
+        objectMapper.findAndRegisterModules();
+
+        return Feign.builder()
+                .client(new OkHttpClient())
+                .encoder(new JacksonEncoder(objectMapper))
+                .decoder(new JacksonDecoder(objectMapper))
+                .logger(new Slf4jLogger(CommentsClient.class))
+                .target(CommentsClient.class, COMMENTS_URL);
     }
 }
